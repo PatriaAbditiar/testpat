@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import { SavedSegment } from "@/lib/segment-types";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
@@ -13,7 +14,7 @@ interface SegmentSidebarProps {
   onToggle: () => void;
 }
 
-export function SegmentSidebar({
+export const SegmentSidebar = memo(function SegmentSidebar({
   segments,
   activeSegmentId,
   onSelect,
@@ -120,4 +121,4 @@ export function SegmentSidebar({
       </div>
     </>
   );
-}
+});
