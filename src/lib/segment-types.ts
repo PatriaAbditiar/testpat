@@ -41,6 +41,25 @@ export const LAST_TXN_OPTIONS: { label: string; value: LastTxnPreset }[] = [
   { label: "Within 7d", value: "7d" },
 ];
 
+export type LastTweetPreset = "any" | "1d" | "3d" | "7d" | "30d" | "90d";
+
+export const LAST_TWEET_OPTIONS: { label: string; value: LastTweetPreset }[] = [
+  { label: "Any", value: "any" },
+  { label: "Within 1 day", value: "1d" },
+  { label: "Within 3 days", value: "3d" },
+  { label: "Within 7 days", value: "7d" },
+  { label: "Within 30 days", value: "30d" },
+  { label: "Within 90 days", value: "90d" },
+];
+
+export const LAST_TWEET_SECONDS: Record<string, number> = {
+  "1d": 86400,
+  "3d": 259200,
+  "7d": 604800,
+  "30d": 2592000,
+  "90d": 7776000,
+};
+
 // Launchpad options (multi-select: empty array = any)
 // Values must match exact Codex API launchpad names
 export const LAUNCHPAD_OPTIONS: { label: string; value: string }[] = [
@@ -100,6 +119,7 @@ export interface SegmentFilters {
   holdersMin: string;
   moreSellsThanBuys: boolean;
   lastTransaction: LastTxnPreset;
+  lastTweet: LastTweetPreset;
   launchpad: string[];
   amm: string[];
 }
@@ -115,6 +135,7 @@ export const DEFAULT_FILTERS: SegmentFilters = {
   holdersMin: "",
   moreSellsThanBuys: false,
   lastTransaction: "any",
+  lastTweet: "any",
   launchpad: [],
   amm: [],
 };
@@ -140,6 +161,8 @@ export interface SegmentTokenResult {
   sellCount24: number | null;
   txnCount24: number | null;
   holders: number | null;
+  /** ISO date string from Radar API, e.g. "2026-02-27T10:12:14.000Z" */
+  lastTweetDate: string | null;
   token: {
     address: string;
     name: string;

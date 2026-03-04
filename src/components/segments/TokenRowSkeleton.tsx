@@ -1,3 +1,5 @@
+"use client";
+
 import { TableCell, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -22,6 +24,7 @@ export function TokenRowSkeleton() {
       <TableCell className="text-right"><Skeleton className="h-4 w-14 bg-green-900/20 ml-auto" /></TableCell>
       <TableCell className="text-right"><Skeleton className="h-4 w-12 bg-green-900/20 ml-auto" /></TableCell>
       <TableCell className="text-center"><Skeleton className="h-4 w-4 bg-green-900/20 mx-auto" /></TableCell>
+      <TableCell className="text-right"><Skeleton className="h-4 w-14 bg-green-900/20 ml-auto" /></TableCell>
       <TableCell><Skeleton className="h-7 w-20 bg-green-900/20 ml-auto" /></TableCell>
     </TableRow>
   );

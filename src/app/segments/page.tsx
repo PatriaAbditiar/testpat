@@ -157,20 +157,13 @@ function SegmentsContent() {
     setSegmentName("");
   };
 
-  // Load saved segment
+  // Load saved segment — set state + immediately run
   const handleSelectSegment = (segment: SavedSegment) => {
     setFilters({ ...segment.filters });
     setActiveSegmentId(segment.id);
     setSegmentName(segment.name);
     setSidebarOpen(false);
-    // Auto-run when selecting a segment
-    setCurrentPage(0);
-    setResults([]);
-    setHasRun(false);
-    // Trigger run after state update
-    setTimeout(() => {
-      runSegmentDirect(segment.filters, segment.id);
-    }, 0);
+    runSegmentDirect(segment.filters, segment.id);
   };
 
   // Direct run with explicit filters (avoids stale closure)

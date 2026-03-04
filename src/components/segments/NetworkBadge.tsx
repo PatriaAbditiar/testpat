@@ -1,3 +1,6 @@
+"use client";
+
+import { memo } from "react";
 import { NETWORK_IDS } from "@/lib/segment-types";
 
 const NETWORK_MAP: Record<number, { label: string; color: string }> = {
@@ -6,7 +9,11 @@ const NETWORK_MAP: Record<number, { label: string; color: string }> = {
   [NETWORK_IDS.base]: { label: "BASE", color: "bg-blue-600" },
 };
 
-export function NetworkBadge({ networkId }: { networkId: number }) {
+export const NetworkBadge = memo(function NetworkBadge({
+  networkId,
+}: {
+  networkId: number;
+}) {
   const net = NETWORK_MAP[networkId] ?? { label: "?", color: "bg-gray-600" };
   return (
     <span
@@ -15,4 +22,4 @@ export function NetworkBadge({ networkId }: { networkId: number }) {
       {net.label}
     </span>
   );
-}
+});

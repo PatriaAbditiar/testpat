@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -16,10 +17,12 @@ import {
   NETWORK_LABELS,
   TOKEN_AGE_OPTIONS,
   LAST_TXN_OPTIONS,
+  LAST_TWEET_OPTIONS,
   LAUNCHPAD_OPTIONS,
   AMM_OPTIONS,
   TokenAgePreset,
   LastTxnPreset,
+  LastTweetPreset,
 } from "@/lib/segment-types";
 
 function toggleArrayValue(arr: string[], value: string): string[] {
@@ -41,7 +44,7 @@ interface SegmentFormProps {
   onReset: () => void;
 }
 
-export function SegmentForm({
+export const SegmentForm = memo(function SegmentForm({
   filters,
   segmentName,
   loading,
@@ -91,8 +94,8 @@ export function SegmentForm({
         </div>
       </div>
 
-      {/* Row: Token Age + Last Transaction */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      {/* Row: Token Age + Last Transaction + Last Tweet */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="space-y-2">
           <label className="text-xs text-gray-500 uppercase tracking-wider">
             Token Age
@@ -133,6 +136,33 @@ export function SegmentForm({
             </SelectTrigger>
             <SelectContent className="bg-[#0d0d14] border-green-900/50">
               {LAST_TXN_OPTIONS.map((opt) => (
+                <SelectItem
+                  key={opt.value}
+                  value={opt.value}
+                  className="text-gray-200 focus:bg-green-950 focus:text-green-400"
+                >
+                  {opt.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-2">
+          <label className="text-xs text-gray-500 uppercase tracking-wider">
+            Last Tweet
+          </label>
+          <Select
+            value={filters.lastTweet ?? "any"}
+            onValueChange={(v) =>
+              update({ lastTweet: v as LastTweetPreset })
+            }
+          >
+            <SelectTrigger className="border-green-900/50 bg-transparent text-gray-200 focus:ring-green-600">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="bg-[#0d0d14] border-green-900/50">
+              {LAST_TWEET_OPTIONS.map((opt) => (
                 <SelectItem
                   key={opt.value}
                   value={opt.value}
@@ -416,4 +446,4 @@ export function SegmentForm({
       </div>
     </div>
   );
-}
+});

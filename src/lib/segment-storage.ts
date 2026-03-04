@@ -18,6 +18,11 @@ function migrateFilters(seg: SavedSegment): SavedSegment {
     f.amm = old && old !== "any" ? [old] : [];
   }
 
+  // lastTweet: added later, default to "any" if missing
+  if (!f.lastTweet) {
+    f.lastTweet = "any";
+  }
+
   // Merge with defaults — strip undefined values from f so defaults actually apply
   const cleaned = Object.fromEntries(
     Object.entries(f).filter(([, v]) => v !== undefined)

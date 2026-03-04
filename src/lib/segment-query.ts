@@ -2,6 +2,7 @@ import {
   NETWORK_IDS,
   SegmentFilters,
   SegmentTokenResult,
+  LAST_TWEET_SECONDS,
 } from "./segment-types";
 
 export const SEGMENT_FILTER_QUERY = `
@@ -202,10 +203,76 @@ async function fetchBatch(
   };
 }
 
+/* ------------------------------------------------------------------ */
+/*  Last Tweet enrichment                                              */
+/* ------------------------------------------------------------------ */
+
+/** Concurrency limit for tweet API calls */
+const TWEET_CONCURRENCY = 10;
+
+interface TweetApiResponse {
+  isValid?: boolean;
+  isNotFound?: boolean;
+  data?: { tweetId?: string; twitterCreatedDate?: string }[] | null;
+}
+
+/**
+ * Fetch last tweet date for a single ticker via the local proxy.
+ * The joj API returns an array of recent tweets — we take data[0] as the latest.
+ * Returns ISO date string or null on failure / not found.
+ */
+async function fetchLastTweet(symbol: string): Promise<string | null> {
+  try {
+    const ticker = symbol.startsWith("$") ? symbol : `$${symbol}`;
+    const res = await fetch(
+      `/api/last-tweet?ticker=${encodeURIComponent(ticker)}`,
+      { signal: AbortSignal.timeout(6000) }
+    );
+    if (!res.ok) return null;
+    const json: TweetApiResponse = await res.json();
+    if (json.isNotFound || !Array.isArray(json.data) || json.data.length === 0) return null;
+    return json.data[0].twitterCreatedDate ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Enrich an array of tokens with lastTweetDate from the Radar API.
+ * Runs with a concurrency pool to avoid hammering the API.
+ */
+async function enrichWithTweetData(
+  tokens: SegmentTokenResult[]
+): Promise<SegmentTokenResult[]> {
+  // Deduplicate symbols to avoid redundant API calls
+  const symbolMap = new Map<string, string | null>();
+  const uniqueSymbols = [
+    ...new Set(
+      tokens
+        .map((t) => t.token.symbol)
+        .filter((s): s is string => !!s && s.length > 0)
+    ),
+  ];
+
+  // Process in batches with concurrency limit
+  for (let i = 0; i < uniqueSymbols.length; i += TWEET_CONCURRENCY) {
+    const batch = uniqueSymbols.slice(i, i + TWEET_CONCURRENCY);
+    const results = await Promise.all(batch.map((sym) => fetchLastTweet(sym)));
+    batch.forEach((sym, idx) => symbolMap.set(sym, results[idx]));
+  }
+
+  // Merge tweet dates into tokens
+  return tokens.map((t) => ({
+    ...t,
+    lastTweetDate: t.token.symbol ? (symbolMap.get(t.token.symbol) ?? null) : null,
+  }));
+}
+
 /**
  * Fetch ALL tokens matching the filters from the API.
  * Batches requests of API_BATCH (200) until all results are retrieved,
  * capped at MAX_TOTAL (1000).
+ * Then enriches with last-tweet data and applies client-side filters.
  */
 export async function fetchSegmentTokens(
   filters: SegmentFilters
@@ -231,6 +298,23 @@ export async function fetchSegmentTokens(
         t.buyCount24 != null &&
         t.sellCount24 > t.buyCount24
     );
+  }
+
+  // Enrich with last tweet data
+  allResults = await enrichWithTweetData(allResults);
+
+  // Client-side: filter by last tweet recency
+  const lastTweetFilter = filters.lastTweet ?? "any";
+  if (lastTweetFilter !== "any") {
+    const maxAge = LAST_TWEET_SECONDS[lastTweetFilter];
+    if (maxAge) {
+      const cutoff = Date.now() - maxAge * 1000;
+      allResults = allResults.filter((t) => {
+        if (!t.lastTweetDate) return false;
+        const tweetTime = new Date(t.lastTweetDate).getTime();
+        return !isNaN(tweetTime) && tweetTime >= cutoff;
+      });
+    }
   }
 
   return { results: allResults, totalCount };

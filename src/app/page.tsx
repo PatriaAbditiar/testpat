@@ -22,6 +22,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { fetchFilteredTokens, TokenResult } from "@/lib/codex";
+import { formatNumber, formatPrice, formatChange, timeAgo } from "@/lib/format-utils";
 import { loadSegments, addSegment } from "@/lib/segment-storage";
 import {
   SavedSegment,
@@ -31,10 +32,12 @@ import {
   NETWORK_LABELS,
   TOKEN_AGE_OPTIONS,
   LAST_TXN_OPTIONS,
+  LAST_TWEET_OPTIONS,
   LAUNCHPAD_OPTIONS,
   AMM_OPTIONS,
   TokenAgePreset,
   LastTxnPreset,
+  LastTweetPreset,
 } from "@/lib/segment-types";
 
 type TimeWindow = { label: string; seconds: number };
@@ -54,33 +57,6 @@ const MCAP_FILTERS: McapFilter[] = [
   { label: "500K", value: 500_000 },
   { label: "1M", value: 1_000_000 },
 ];
-
-function formatNumber(value: string | null | undefined): string {
-  if (!value) return "—";
-  const num = parseFloat(value);
-  if (isNaN(num)) return "—";
-  if (num >= 1_000_000_000) return `$${(num / 1_000_000_000).toFixed(2)}B`;
-  if (num >= 1_000_000) return `$${(num / 1_000_000).toFixed(2)}M`;
-  if (num >= 1_000) return `$${(num / 1_000).toFixed(2)}K`;
-  if (num >= 1) return `$${num.toFixed(2)}`;
-  return `$${num.toPrecision(4)}`;
-}
-
-function formatPrice(value: string | null | undefined): string {
-  if (!value) return "—";
-  const num = parseFloat(value);
-  if (isNaN(num)) return "—";
-  if (num >= 1) return `$${num.toFixed(4)}`;
-  if (num >= 0.0001) return `$${num.toFixed(6)}`;
-  return `$${num.toPrecision(4)}`;
-}
-
-function formatChange(value: string | null | undefined): string {
-  if (!value) return "—";
-  const num = parseFloat(value);
-  if (isNaN(num)) return "—";
-  return `${num >= 0 ? "+" : ""}${num.toFixed(2)}%`;
-}
 
 function SocialIcon({ type, url }: { type: string; url: string }) {
   const icons: Record<string, JSX.Element> = {
@@ -127,17 +103,6 @@ function SocialIcon({ type, url }: { type: string; url: string }) {
       {icons[type] ?? null}
     </a>
   );
-}
-
-function timeAgo(unixTimestamp: number): string {
-  const seconds = Math.floor(Date.now() / 1000 - unixTimestamp);
-  if (seconds < 60) return `${seconds}s ago`;
-  const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `${minutes}m ago`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h ${minutes % 60}m ago`;
-  const days = Math.floor(hours / 24);
-  return `${days}d ${hours % 24}h ago`;
 }
 
 export default function Dashboard() {
@@ -341,8 +306,8 @@ export default function Dashboard() {
                 </div>
               </div>
 
-              {/* Token Age + Last Transaction */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* Token Age + Last Transaction + Last Tweet */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <label className="text-xs text-gray-500 uppercase tracking-wider">
                     Token Age
@@ -381,6 +346,31 @@ export default function Dashboard() {
                     </SelectTrigger>
                     <SelectContent className="bg-[#0d0d14] border-green-900/50">
                       {LAST_TXN_OPTIONS.map((opt) => (
+                        <SelectItem
+                          key={opt.value}
+                          value={opt.value}
+                          className="text-gray-200 focus:bg-green-950 focus:text-green-400"
+                        >
+                          {opt.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs text-gray-500 uppercase tracking-wider">
+                    Last Tweet
+                  </label>
+                  <Select
+                    value={segFilters.lastTweet ?? "any"}
+                    onValueChange={(v) => updateSegFilter({ lastTweet: v as LastTweetPreset })}
+                  >
+                    <SelectTrigger className="border-green-900/50 bg-transparent text-gray-200 focus:ring-green-600">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="bg-[#0d0d14] border-green-900/50">
+                      {LAST_TWEET_OPTIONS.map((opt) => (
                         <SelectItem
                           key={opt.value}
                           value={opt.value}

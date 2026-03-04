@@ -47,3 +47,24 @@ export function formatCompactNumber(value: number): string {
   if (value >= 1_000) return `${(value / 1_000).toFixed(1)}K`;
   return value.toString();
 }
+
+/**
+ * Format a last-tweet ISO date into a human-readable relative string.
+ * - < 7 days → "Xd ago"
+ * - 7–30 days → "Xw ago"
+ * - > 30 days → "Xmo ago"
+ */
+export function formatLastTweet(isoDate: string | null | undefined): string {
+  if (!isoDate) return "—";
+  const ms = Date.now() - new Date(isoDate).getTime();
+  if (isNaN(ms) || ms < 0) return "—";
+  const days = Math.floor(ms / 86_400_000);
+  if (days === 0) return "<1d ago";
+  if (days < 7) return `${days}d ago`;
+  if (days < 30) {
+    const weeks = Math.floor(days / 7);
+    return `${weeks}w ago`;
+  }
+  const months = Math.floor(days / 30);
+  return `${months}mo ago`;
+}
