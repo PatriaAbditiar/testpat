@@ -240,9 +240,13 @@ async function fetchLastTweet(symbol: string): Promise<string | null> {
 /**
  * Enrich an array of tokens with lastTweetDate from the Radar API.
  * Runs with a concurrency pool to avoid hammering the API.
+ *
+ * Accepts an optional `onProgress` callback that fires after each batch
+ * so the UI can update progressively.
  */
-async function enrichWithTweetData(
-  tokens: SegmentTokenResult[]
+export async function enrichWithTweetData(
+  tokens: SegmentTokenResult[],
+  onProgress?: (updated: SegmentTokenResult[]) => void
 ): Promise<SegmentTokenResult[]> {
   // Deduplicate symbols to avoid redundant API calls
   const symbolMap = new Map<string, string | null>();
@@ -259,9 +263,18 @@ async function enrichWithTweetData(
     const batch = uniqueSymbols.slice(i, i + TWEET_CONCURRENCY);
     const results = await Promise.all(batch.map((sym) => fetchLastTweet(sym)));
     batch.forEach((sym, idx) => symbolMap.set(sym, results[idx]));
+
+    // Fire progress callback so the UI can update progressively
+    if (onProgress) {
+      const partial = tokens.map((t) => ({
+        ...t,
+        lastTweetDate: t.token.symbol ? (symbolMap.get(t.token.symbol) ?? null) : null,
+      }));
+      onProgress(partial);
+    }
   }
 
-  // Merge tweet dates into tokens
+  // Final merge
   return tokens.map((t) => ({
     ...t,
     lastTweetDate: t.token.symbol ? (symbolMap.get(t.token.symbol) ?? null) : null,
@@ -300,12 +313,11 @@ export async function fetchSegmentTokens(
     );
   }
 
-  // Enrich with last tweet data
-  allResults = await enrichWithTweetData(allResults);
-
-  // Client-side: filter by last tweet recency
+  // Only enrich with tweet data + filter when lastTweet filter is active.
+  // Otherwise the caller should use enrichWithTweetData() in the background.
   const lastTweetFilter = filters.lastTweet ?? "any";
   if (lastTweetFilter !== "any") {
+    allResults = await enrichWithTweetData(allResults);
     const maxAge = LAST_TWEET_SECONDS[lastTweetFilter];
     if (maxAge) {
       const cutoff = Date.now() - maxAge * 1000;

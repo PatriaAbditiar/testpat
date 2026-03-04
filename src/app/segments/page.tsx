@@ -13,7 +13,7 @@ import {
   SavedSegment,
   DEFAULT_FILTERS,
 } from "@/lib/segment-types";
-import { fetchSegmentTokens } from "@/lib/segment-query";
+import { fetchSegmentTokens, enrichWithTweetData } from "@/lib/segment-query";
 import {
   loadSegments,
   addSegment,
@@ -60,6 +60,26 @@ function SegmentsContent() {
   const searchParams = useSearchParams();
   const initialLoadDone = useRef(false);
 
+  // Background tweet enrichment — runs after results are displayed
+  const enrichTweetsInBackground = useCallback(
+    (tokens: SegmentTokenResult[], filtersUsed: SegmentFilters) => {
+      // Skip if the lastTweet filter was active (already enriched in fetchSegmentTokens)
+      if ((filtersUsed.lastTweet ?? "any") !== "any") return;
+      // Skip if no results
+      if (tokens.length === 0) return;
+
+      enrichWithTweetData(tokens, (progressResults) => {
+        // Update results progressively as batches complete
+        setResults(progressResults);
+      }).then((finalResults) => {
+        setResults(finalResults);
+      }).catch(() => {
+        // Tweet enrichment failure is non-critical — results still show
+      });
+    },
+    []
+  );
+
   // Load saved segments on mount + auto-load from ?id= param
   useEffect(() => {
     const segments = loadSegments();
@@ -86,6 +106,8 @@ function SegmentsContent() {
               setLastUpdate(new Date());
               const updated = updateSegmentLastRun(match.id, count);
               setSavedSegments(updated);
+              // Enrich with tweet data in background
+              enrichTweetsInBackground(data, match.filters);
             })
             .catch((err) => {
               setError(err instanceof Error ? err.message : "Unknown error");
@@ -116,13 +138,16 @@ function SegmentsContent() {
           const updated = updateSegmentLastRun(activeSegmentId, count);
           setSavedSegments(updated);
         }
+
+        // Enrich with tweet data in background (non-blocking)
+        enrichTweetsInBackground(data, filters);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Unknown error");
       } finally {
         setLoading(false);
       }
     },
-    [filters, activeSegmentId]
+    [filters, activeSegmentId, enrichTweetsInBackground]
   );
 
   // Auto-refresh every 5 minutes
@@ -185,6 +210,8 @@ function SegmentsContent() {
         const updated = updateSegmentLastRun(segId, count);
         setSavedSegments(updated);
       }
+      // Enrich with tweet data in background (non-blocking)
+      enrichTweetsInBackground(data, f);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error");
     } finally {
